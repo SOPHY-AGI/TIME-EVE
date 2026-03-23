@@ -651,7 +651,7 @@ def cmdhandler(
             pass
         except Exception:
             _msg_err(caller, _ERROR_UNTRAPPED)
-            raise ErrorReported(raw_string)
+            raise ErrorReported(cmd.raw_string)
         finally:
             _COMMAND_NESTING[called_by] -= 1
 
@@ -761,7 +761,7 @@ def cmdhandler(
         except ErrorReported as exc:
             # this error was already reported, so we
             # catch it here and don't pass it on.
-            logger.log_err("User input was: '%s'." % exc.raw_string)
+            logger.log_err("User input was: '%s'." % logger.mask_sensitive_input(exc.raw_string))
 
         except ExecSystemCommand as exc:
             # Not a normal command: run a system command, if available,

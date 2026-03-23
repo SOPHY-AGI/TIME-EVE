@@ -10,7 +10,7 @@ import re
 
 from django.conf import settings
 
-from evennia.utils.logger import log_trace
+from evennia.utils.logger import log_trace, mask_sensitive_input
 
 _MULTIMATCH_REGEX = re.compile(settings.SEARCH_MULTIMATCH_REGEX, re.I + re.U)
 _CMD_IGNORE_PREFIXES = settings.CMD_IGNORE_PREFIXES
@@ -71,7 +71,7 @@ def build_matches(raw_string, cmdset, include_prefixes=False):
             if cmdname:
                 matches.append(create_match(cmdname, raw_string, cmd, raw_cmdname))
     except Exception:
-        log_trace("cmdhandler error. raw_input:%s" % raw_string)
+        log_trace("cmdhandler error. raw_input:%s" % mask_sensitive_input(raw_string))
     return matches
 
 

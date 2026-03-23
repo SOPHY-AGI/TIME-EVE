@@ -291,6 +291,25 @@ MAX_CHAR_LIMIT_WARNING = (
 # debugging. OBS: Showing full tracebacks to regular users could be a
 # security problem -turn this off in a production game!
 IN_GAME_ERRORS = True
+# Default masking regexes used by security/audit logging to avoid writing
+# cleartext credentials to logs. Each entry is a dict mapping an arbitrary
+# label to a regex with a named group `(?P<secret>...)` indicating what to mask.
+# You can override this list in your settings.py, or append to it to support
+# custom login/password commands:
+#     AUDIT_MASKS += [{"mycmd": r"^mycmd\\s+(?P<secret>.+)$"}]
+AUDIT_MASKS = [
+    {"connect": r'^\s*(?:connect|conn|con|co)\s+("[^"]+"|[^\s]+)\s+(?P<secret>.+)$'},
+    {"create": r'^\s*(?:create|cre|cr)\s+("[^"]+"|[^\s]+)\s+(?P<secret>.+)$'},
+    {"userpassword": r'^[@\s]*userpassword\s+(\w+|".+?")\s+=*\s*(?P<secret>[\w]+)$'},
+    {"userpassword": r"^.*new password set to '(?P<secret>[^']+)'\."},
+    {"userpassword": r"^.* has changed your password to '(?P<secret>[^']+)'\."},
+    {"password": r"^[@\s]*(?:password|passwd)\s+(?P<secret>.*)$"},
+    # Legacy typo-tolerant variants (kept for backwards compatibility with auditing behavior).
+    {"connect": r'^[@\s]*[connect]{5,8}\s+(".+?"|[^\s]+)\s+(?P<secret>.+)$'},
+    {"connect": r"^[@\s]*[connect]{5,8}\s+(?P<secret>[\w]+)$"},
+    {"create": r'^[^@]?[create]{5,6}\s+(\w+|".+?")\s+(?P<secret>[\w]+)$'},
+    {"create": r"^[^@]?[create]{5,6}\s+(?P<secret>[\w]+)$"},
+]
 # Broadcast "Server restart"-like messages to all sessions.
 BROADCAST_SERVER_RESTART_MESSAGES = True
 

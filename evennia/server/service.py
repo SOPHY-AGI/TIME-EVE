@@ -522,7 +522,10 @@ class EvenniaServerService(MultiService):
             # only save monitor state on reload, not on shutdown/reset
             from evennia.scripts.monitorhandler import MONITOR_HANDLER
 
-            MONITOR_HANDLER.save()
+            try:
+                MONITOR_HANDLER.save()
+            except Exception as err:
+                logger.log_trace(f"Error saving MonitorHandler state: {err}")
         else:
             if mode == "reset":
                 # like shutdown but don't unset the is_connected flag and don't disconnect sessions
@@ -552,12 +555,18 @@ class EvenniaServerService(MultiService):
         # tickerhandler state should always be saved.
         from evennia.scripts.tickerhandler import TICKER_HANDLER
 
-        TICKER_HANDLER.save()
+        try:
+            TICKER_HANDLER.save()
+        except Exception as err:
+            logger.log_trace(f"Error saving TickerHandler state: {err}")
 
         # on-demand handler state should always be saved.
         from evennia.scripts.ondemandhandler import ON_DEMAND_HANDLER
 
-        ON_DEMAND_HANDLER.save()
+        try:
+            ON_DEMAND_HANDLER.save()
+        except Exception as err:
+            logger.log_trace(f"Error saving OnDemandHandler state: {err}")
 
         # always called, also for a reload
         self.at_server_stop()

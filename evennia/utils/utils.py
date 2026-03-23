@@ -249,13 +249,13 @@ def justify(text, width=None, align="l", indent=0, fillchar=" "):
     is_ansi = isinstance(text, _ANSISTRING)
     lb = _ANSISTRING("\n") if is_ansi else "\n"
 
-    def _process_line(line):
+    def _process_line(line, line_word_length, line_gaps):
         """
         helper function that distributes extra spaces between words. The number
         of gaps is nwords - 1 but must be at least 1 for single-word lines. We
         distribute odd spaces to one of the gaps.
         """
-        line_rest = width - (wlen + ngaps)
+        line_rest = width - (line_word_length + line_gaps)
 
         gap = _ANSISTRING(" ") if is_ansi else " "
 
@@ -277,8 +277,8 @@ def justify(text, width=None, align="l", indent=0, fillchar=" "):
                 else:
                     line[-1] = line[-1] + pad + sp * (line_rest % 2)
             else:  # align 'f'
-                gap += sp * (line_rest // max(1, ngaps))
-                rest_gap = line_rest % max(1, ngaps)
+                gap += sp * (line_rest // max(1, line_gaps))
+                rest_gap = line_rest % max(1, line_gaps)
                 for i in range(rest_gap):
                     line[i] += sp
         elif not any(line):
@@ -302,49 +302,61 @@ def justify(text, width=None, align="l", indent=0, fillchar=" "):
 
     # all other aligns requires splitting into paragraphs and words
 
-    # split into paragraphs and words
-    paragraphs = [text]  # re.split("\n\s*?\n", text, re.MULTILINE)
-    words = []
-    for ip, paragraph in enumerate(paragraphs):
-        if ip > 0:
-            words.append(("\n", 0))
-        words.extend((word, m_len(word)) for word in paragraph.split())
+    def _justify_paragraph(words):
+        ngaps = 0
+        wlen = 0
+        line = []
+        lines = []
 
-    if not words:
-        # Just whitespace!
-        return sp * width
-
-    ngaps = 0
-    wlen = 0
-    line = []
-    lines = []
-
-    while words:
-        if not line:
-            # start a new line
-            word = words.pop(0)
-            wlen = word[1]
-            line.append(word[0])
-        elif (words[0][1] + wlen + ngaps) >= width:
-            # next word would exceed word length of line + smallest gaps
-            lines.append(_process_line(line))
-            ngaps, wlen, line = 0, 0, []
-        else:
-            # put a new word on the line
-            word = words.pop(0)
-            line.append(word[0])
-            if word[1] == 0:
-                # a new paragraph, process immediately
-                lines.append(_process_line(line))
+        while words:
+            if not line:
+                # start a new line
+                word = words.pop(0)
+                wlen = word[1]
+                line.append(word[0])
+            elif (words[0][1] + wlen + ngaps) >= width:
+                # next word would exceed word length of line + smallest gaps
+                lines.append(_process_line(line, wlen, ngaps))
                 ngaps, wlen, line = 0, 0, []
             else:
+                # put a new word on the line
+                word = words.pop(0)
+                line.append(word[0])
                 wlen += word[1]
                 ngaps += 1
 
-    if line:  # catch any line left behind
-        lines.append(_process_line(line))
+        if line:  # catch any line left behind
+            lines.append(_process_line(line, wlen, ngaps))
+
+        return lines
+
+    paragraphs = []
+    paragraph_words = []
+    for input_line in text.split("\n"):
+        line_words = [(word, m_len(word)) for word in input_line.split()]
+        if line_words:
+            paragraph_words.extend(line_words)
+        else:
+            if paragraph_words:
+                paragraphs.append(paragraph_words)
+                paragraph_words = []
+            paragraphs.append(None)
+    if paragraph_words:
+        paragraphs.append(paragraph_words)
+
+    if not paragraphs:
+        # Just whitespace!
+        return sp * width
+
+    blank_line = _ANSISTRING(sp * width) if is_ansi else sp * width
+    lines = []
+    for paragraph in paragraphs:
+        if paragraph is None:
+            lines.append(blank_line)
+        else:
+            lines.extend(_justify_paragraph(paragraph[:]))
+
     indentstring = sp * indent
-    out = lb.join([indentstring + line for line in lines])
     return lb.join([indentstring + line for line in lines])
 
 

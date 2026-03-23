@@ -811,6 +811,25 @@ class TestJustify(TestCase):
 
         self.assertIn(ANSI_RED, str(result))
 
+    def test_justify_preserves_paragraph_breaks(self):
+        text = "Para one words here.\n\nPara two words there."
+        result = utils.justify(text, width=20, align="l")
+        self.assertEqual(
+            "Para one words here.\n                    \nPara two words      \nthere.              ",
+            result,
+        )
+
+    def test_justify_preserves_paragraph_breaks_with_ansi(self):
+        from evennia.utils.ansi import ANSI_RED
+
+        text = ANSIString("Para one has |rred|n text.\n\nPara two.")
+        result = utils.justify(text, width=20, align="l")
+        clean_lines = result.clean().split("\n")
+
+        self.assertIn(ANSI_RED, str(result))
+        self.assertEqual(" " * 20, clean_lines[2])
+        self.assertEqual("Para two.           ", clean_lines[3])
+
 
 class TestAtSearchResult(TestCase):
     """

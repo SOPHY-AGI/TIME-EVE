@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
         include:
-          - python-version: "3.11"
+          - python-version: "3.12"
             coverage-test: true
 
     timeout-minutes: 30
@@ -50,9 +50,9 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     timeout-minutes: 35
 
@@ -68,8 +68,8 @@ jobs:
           password: password
           my-cnf: |
             [mysqld]
-            character-set-server=utf8mb4
-            collation-server=utf8mb4_unicode_ci
+            character-set-server=utf8mb3
+            collation-server=utf8mb3_unicode_ci
             innodb_default_row_format=DYNAMIC
             innodb_file_per_table=1
 
@@ -93,11 +93,11 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
 
-    timeout-minutes: 35
+    timeout-minutes: 60
 
     services:
       postgres:

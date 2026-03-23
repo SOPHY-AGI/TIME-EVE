@@ -69,7 +69,7 @@ class TaskHandlerTask:
 
         """
         d = self.deferred
-        if d:
+        if d is not None:
             d.pause()
 
     def unpause(self):
@@ -78,7 +78,7 @@ class TaskHandlerTask:
 
         """
         d = self.deferred
-        if d:
+        if d is not None:
             d.unpause()
 
     @property
@@ -94,7 +94,7 @@ class TaskHandlerTask:
 
         """
         d = self.deferred
-        if d:
+        if d is not None:
             return d.paused
         else:
             return None
@@ -176,7 +176,7 @@ class TaskHandlerTask:
 
         """
         d = self.deferred
-        if d:
+        if d is not None:
             return d.called
         else:
             return None
@@ -446,7 +446,7 @@ class TaskHandler:
         if task_id in self.tasks:
             # if the task has not been run, cancel it
             deferred = self.get_deferred(task_id)
-            return not (deferred and deferred.called)
+            return not (deferred is not None and deferred.called)
         else:
             return False
 
@@ -466,7 +466,7 @@ class TaskHandler:
         if task_id in self.tasks:
             # if the task has not been run, cancel it
             d = self.get_deferred(task_id)
-            if d:  # it is remotely possible for a task to not have a deferred
+            if d is not None:  # it is remotely possible for a task to not have a deferred
                 if d.called:
                     return False
                 else:  # the callback has not been called yet.
@@ -568,7 +568,7 @@ class TaskHandler:
             date, callback, args, kwargs, persistent, d = self.tasks.get(task_id)
         else:  # the task does not exist
             return False
-        if d:  # it is remotely possible for a task to not have a deferred
+        if d is not None:  # it is remotely possible for a task to not have a deferred
             if not d.called:  # the task's deferred has not been called yet
                 d.cancel()  # cancel the automated callback
         else:  # this task has no deferred, and should not be called

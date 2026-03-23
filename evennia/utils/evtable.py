@@ -119,7 +119,7 @@ from textwrap import TextWrapper
 
 from django.conf import settings
 
-from evennia.utils.ansi import ANSIString
+from evennia.utils.ansi import ANSIString, strip_mxp
 from evennia.utils.utils import display_len as d_len
 from evennia.utils.utils import is_iter, justify
 
@@ -137,7 +137,7 @@ def _to_ansi(obj):
     if is_iter(obj):
         return [_to_ansi(o) for o in obj]
     else:
-        return ANSIString(obj)
+        return ANSIString(strip_mxp(str(obj)))
 
 
 _whitespace = "\t\n\x0b\x0c\r "
@@ -184,19 +184,17 @@ class ANSITextWrapper(TextWrapper):
           'use', ' ', 'the', ' ', '-b', ' ', option!'
         otherwise.
         """
-        # NOTE-PYTHON3: The following code only roughly approximates what this
-        #               function used to do. Regex splitting on ANSIStrings is
-        #               dropping ANSI codes, so we're using ANSIString.split
-        #               for the time being.
-        #
-        #               A less hackier solution would be appreciated.
-        chunks = _to_ansi(text).split()
-
-        chunks = [chunk + " " for chunk in chunks if chunk]  # remove empty chunks
-
-        if len(chunks) > 1:
-            chunks[-1] = chunks[-1][0:-1]
-
+        # ANSIString.split(None) collapses repeated whitespace, which breaks
+        # pre-formatted content (such as nested EvTables). Split on explicit
+        # spaces instead and keep separators as separate chunks.
+        text = _to_ansi(text)
+        parts = text.split(" ")
+        chunks = []
+        for idx, part in enumerate(parts):
+            if part:
+                chunks.append(part)
+            if idx < len(parts) - 1:
+                chunks.append(" ")
         return chunks
 
     def _wrap_chunks(self, chunks):
@@ -489,6 +487,7 @@ class EvCell:
         Returns:
             split (list): split text.
         """
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
         return text.split("\n")
 
     def _fit_width(self, data):
@@ -557,7 +556,29 @@ class EvCell:
         align = self.align
         hfill_char = self.hfill_char
         width = self.width
-        return [justify(line, width, align=align, fillchar=hfill_char) for line in data]
+        aligned = []
+        for line in data:
+            # Preserve manually spaced/pre-formatted lines (like nested tables).
+            raw_line = line.raw() if hasattr(line, "raw") else str(line)
+            has_link_markup = strip_mxp(raw_line) != raw_line
+            has_manual_spacing = "  " in raw_line.lstrip(" ")
+            if has_manual_spacing or has_link_markup:
+                line_width = d_len(line)
+                if line_width >= width:
+                    aligned.append(justify(line, width, align="a", fillchar=hfill_char))
+                    continue
+                pad = width - line_width
+                if align == "r":
+                    aligned.append(hfill_char * pad + line)
+                elif align == "c":
+                    left = pad // 2
+                    right = pad - left
+                    aligned.append(hfill_char * left + line + hfill_char * right)
+                else:
+                    aligned.append(line + hfill_char * pad)
+            else:
+                aligned.append(justify(line, width, align=align, fillchar=hfill_char))
+        return aligned
 
     def _valign(self, data):
         """

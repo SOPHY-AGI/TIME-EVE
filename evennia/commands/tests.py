@@ -3,6 +3,8 @@ Unit testing for the Command system itself.
 
 """
 
+from unittest.mock import patch
+
 from django.test import override_settings
 
 from evennia.commands import cmdparser
@@ -1191,6 +1193,19 @@ class TestCmdParser(TestCase):
             ("look at", " target", dummy, 7, 0.5, "look"),
         )
 
+    @patch("evennia.commands.cmdparser.log_trace")
+    def test_build_matches_masks_sensitive_input_on_error(self, mock_log_trace):
+        class _BrokenCmdSet:
+            def __iter__(self):
+                raise RuntimeError("forced parser failure")
+
+        cmdparser.build_matches("connect johnny password123", _BrokenCmdSet())
+        self.assertTrue(mock_log_trace.called)
+
+        logged = mock_log_trace.call_args[0][0]
+        self.assertIn("connect johnny ***********", logged)
+        self.assertNotIn("password123", logged)
+
     @override_settings(CMD_IGNORE_PREFIXES="@&/+")
     def test_build_matches(self):
         a_cmdset = _CmdSetTest()
@@ -1309,6 +1324,21 @@ class TestCmdSet(BaseEvenniaTest):
 
         self.assertIsInstance(result, _CmdTest2)
 
+    def test_cmdset_add_allow_duplicates(self):
+        class _CmdDuplicateA(Command):
+            key = "duplicate"
+
+        class _CmdDuplicateB(Command):
+            key = "duplicate"
+
+        cmdset = CmdSet()
+        cmdset.add(_CmdDuplicateA, allow_duplicates=True)
+        cmdset.add(_CmdDuplicateB, allow_duplicates=True)
+
+        duplicate_cmds = [cmd for cmd in cmdset.commands if cmd.key == "duplicate"]
+        self.assertEqual(len(duplicate_cmds), 2)
+        self.assertEqual({cmd.__class__ for cmd in duplicate_cmds}, {_CmdDuplicateA, _CmdDuplicateB})
+
 
 class _CmdG(Command):
     key = "smile"
@@ -1360,3 +1390,38 @@ class TestIssue3643(BaseEvenniaTest):
     def test_issue_3643(self):
         cmd = _TestCmd1()
         self.assertEqual(cmd.locks, "cmd:all();usecmd:false()")
+
+
+class _CmdCrash(Command):
+    key = "connect"
+
+    def func(self):
+        raise RuntimeError("forced failure")
+
+
+class TestIssue2627(TwistedTestCase, BaseEvenniaTest):
+    """
+    Prevent logging plaintext credentials in command-error reporting.
+    https://github.com/evennia/evennia/issues/2627
+    """
+
+    def setUp(self):
+        self.patch(sys.modules["evennia.server.sessionhandler"], "delay", _mockdelay)
+        super().setUp()
+
+    @patch("evennia.commands.cmdhandler.logger.log_err")
+    def test_cmdhandler_masks_sensitive_input_in_error_log(self, mock_log_err):
+        d = cmdhandler.cmdhandler(
+            self.session, " johnny password123", cmdobj=_CmdCrash(), cmdobj_key="connect"
+        )
+
+        def _callback(_):
+            logged = [call.args[0] for call in mock_log_err.call_args_list if call.args]
+            self.assertIn("User input was: 'connect johnny ***********'.", logged)
+            self.assertNotIn(
+                "User input was: 'connect johnny password123'.",
+                logged,
+            )
+
+        d.addCallback(_callback)
+        return d

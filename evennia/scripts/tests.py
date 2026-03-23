@@ -16,6 +16,7 @@ from evennia.scripts.monitorhandler import MonitorHandler
 from evennia.scripts.ondemandhandler import OnDemandHandler, OnDemandTask
 from evennia.scripts.scripts import DoNothing, ExtendedLoopingCall
 from evennia.scripts.tickerhandler import TickerHandler
+from evennia.typeclasses.attributes import AttributeProperty
 from evennia.utils.create import create_script
 from evennia.utils.dbserialize import dbserialize
 from evennia.utils.test_resources import BaseEvenniaTest, EvenniaTest
@@ -84,6 +85,10 @@ class TestingListIntervalScript(DefaultScript):
         self.desc = "This is an empty placeholder script."
         self.interval = 1
         self.repeats = 1
+
+
+class ScriptWithStoredRef(DefaultScript):
+    linked = AttributeProperty(default=None, autocreate=False)
 
 
 class TestScriptHandler(BaseEvenniaTest):
@@ -160,6 +165,47 @@ class TestScriptDB(TestCase):
             self.scr.start()
         # Check the script is not recreated as a side-effect
         self.assertFalse(self.scr in ScriptDB.objects.get_all_scripts())
+
+
+class TestIssue3194(BaseEvenniaTest):
+    """
+    Regression test for inconsistent filtering of Script AttributeProperty refs.
+    https://github.com/evennia/evennia/issues/3194
+    """
+
+    def test_script_attributeproperty_filtering_stored_dbobjs(self):
+        script_a = create_script(ScriptWithStoredRef, key="issue3194-script-a")
+        script_b = create_script(ScriptWithStoredRef, key="issue3194-script-b")
+        script_c = create_script(ScriptWithStoredRef, key="issue3194-script-c")
+
+        try:
+            script_a.linked = script_b
+            script_c.linked = self.room1
+
+            self.assertEqual(
+                list(ScriptWithStoredRef.objects.get_by_attribute("linked", value=script_b)),
+                [script_a],
+            )
+            self.assertEqual(
+                list(
+                    ScriptWithStoredRef.objects.filter(
+                        db_attributes__db_key="linked", db_attributes__db_value=script_b
+                    )
+                ),
+                [script_a],
+            )
+            self.assertEqual(
+                list(
+                    ScriptWithStoredRef.objects.filter(
+                        db_attributes__db_key="linked", db_attributes__db_value=self.room1
+                    )
+                ),
+                [script_c],
+            )
+        finally:
+            script_a.delete()
+            script_b.delete()
+            script_c.delete()
 
 
 class TestExtendedLoopingCall(TestCase):
@@ -721,6 +767,60 @@ class TestOnDemandHandler(EvenniaTest):
         self.handler.save()
         self.handler.clear()
         self.handler.save()
+
+    def test_handler_save_purges_unpicklable_task(self):
+        class _UnpicklableValue:
+            def __getstate__(self):
+                raise TypeError("cannot pickle this")
+
+        self.handler.clear()
+        self.handler.save()
+        self.handler.add("good", category="decay", stages={0: "new"})
+        self.handler.add("bad", category=_UnpicklableValue(), stages={0: "new"})
+
+        self.handler.save()
+
+        self.assertEqual(
+            set(self.handler.tasks.keys()),
+            {
+                ("good", "decay"),
+            },
+        )
+        reloaded_handler = OnDemandHandler()
+        reloaded_handler.load()
+        self.assertEqual(
+            set(reloaded_handler.tasks.keys()),
+            {
+                ("good", "decay"),
+            },
+        )
+
+    def test_handler_save_purges_recursive_task(self):
+        class _RecursiveValue:
+            def __getstate__(self):
+                return self.__getstate__()
+
+        self.handler.clear()
+        self.handler.save()
+        self.handler.add("good", category="decay", stages={0: "new"})
+        self.handler.add(_RecursiveValue(), category="loop", stages={0: "new"})
+
+        self.handler.save()
+
+        self.assertEqual(
+            set(self.handler.tasks.keys()),
+            {
+                ("good", "decay"),
+            },
+        )
+        reloaded_handler = OnDemandHandler()
+        reloaded_handler.load()
+        self.assertEqual(
+            set(reloaded_handler.tasks.keys()),
+            {
+                ("good", "decay"),
+            },
+        )
 
     @mock.patch("evennia.scripts.ondemandhandler.OnDemandTask.runtime")
     def test_call_staging_function_with_kwargs(self, mock_runtime):

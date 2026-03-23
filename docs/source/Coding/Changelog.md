@@ -1,11 +1,18 @@
 # Changelog
 
-## Main branch
+## Evennia 6.0.0
 
-- Security dependency updates: Django >5.2.8 (<5.3), Django RestFramework 3.16
-- [Feat][pull3599]: Make at_pre_cmd
+Feb 15, 2026
+
+- Feat (backwards incompatble): Drop Python 3.11 support (supported: Python 3.12, 3.13, 3.14 (req)). (Griatch)
+- Security: Django >=6.0.2 (<6.1), Django RestFramework 3.16 (Griatch)
+- Update: `XYZGrid` contrib now requires scipy 1.15->1.17. Note: Pathfinding may pick different
+  shortest routes from before, due to private changes in scipy Dijkstra algorithm (Griatch)
+- [Feat][pull3599]: Make `at_pre_cmd` testable in unit tests (blongden)
 - [Fix]: API /openapi/setattribute endpoints were both POST and PUT, causing schema
   errors; now changed to PUT only. (Griatch)
+- [Feat][issue2627]: Add `settings.AUDIT_MASKS` to customize what Evennia should
+  obfuscate in server error logs (such as passwords from custom login commands) (Griatch)
 - [Fix][pull3799]: Fix typo in `basic_tc.py` contrib for beginner tutorial (Tharic99)
 - [Fix][pull3806]: EvMore wouldn't pass Session to next cmd when exiting (gas-public-wooden-clean)
 - [Fix][pull3809]: Admin page - Repair link to Account button (UserlandAlchemist)
@@ -25,6 +32,25 @@
   ANSIString after reset (speeds up EvForm other string ops, fixes compatibility) (count-infinity)
 - [Fix][pull3853]: Properly handle multimatch separations with native dashes, like
   't-shirt-1' (count-infinity)
+- [Fix][pull3733]: Allow `CmdSetAttribute` to use categery, view dicts by key (InspectorCaracal)
+- [Fix][issue3858]: Fix parsing issues in dice contrib (Griatch)
+- Fix: `Typeclass.objects.get_by_tag()` will now always convert tag keys/categories to integers, to
+  avoid inconsistencies with PostgreSQL databases (Griatch)
+- [Fix][issue3513]: Fixed issue where OnDemandHandler could traceback on an
+  un-pickle-able object and cause an error at server shutdown (Griatch)
+- [Fix][issue3649]: The `:j` command in EvEditor would squash empty lines (Griatch)
+- [Fix][issue3560]: Tutorial QuestHandler failed to load after server restart (Griatch)
+- [Fix][issue3601]: `CmdSet.add(..., allow_duplicates=True)` didn't allow duplicate cmd keys (Griatch)
+- [Fix][issue3194]: Make filtering on AttributeProperties consistent across typeclasses (Griatch)
+- [Fix][issue2774]: Properly support `\n` in `evennia connections` long descriptions (Griatch)
+- [Fix][issue3312]: Handle all edge cases breaking `monitor/monitored` `input_funcs` (Griatch)
+- [Fix][issue3154]: Persistent EvMenu caused multiple cmdsets on reload (Griatch)
+- [Fix][issue3193]: Formatting of inner nested evtable would break (Griatch)
+- [Fix][issue3082]: MXP linking broke EvTable formatting (Griatch)
+- [Fix][issue3693]: Using `|/` in EvTable broke padding (Griatch)
+- [Fix][pull3864]: Correctly use cached dijkstra results for XYZGrid (jaborsh)
+- [Fix][pull3863]: `XYZGrid` performance improvement in teleporter search (jaborsh)
+- [Fix][pull3862]: `TraitHandler` typo/bug fixes  (jaborsh)
 - [Doc][pull3801]: Move Evennia doc build system to latest Sphinx/myST
   (PowershellNinja, also honorary mention to electroglyph)
 - [Doc][pull3800]: Describe support for Telnet SSH in HAProxy documentation (holl0wstar)
@@ -51,6 +77,22 @@
 [pull3852]: https://github.com/evennia/evennia/pull/3852
 [pull3853]: https://github.com/evennia/evennia/pull/3853
 [pull3854]: https://github.com/evennia/evennia/pull/3853
+[pull3733]: https://github.com/evennia/evennia/pull/3853
+[pull3864]: https://github.com/evennia/evennia/pull/3864
+[pull3863]: https://github.com/evennia/evennia/pull/3863
+[pull3862]: https://github.com/evennia/evennia/pull/3862
+[issue3858]: https://github.com/evennia/evennia/issues/3858
+[issue3813]: https://github.com/evennia/evennia/issues/3513
+[issue3649]: https://github.com/evennia/evennia/issues/3649
+[issue3560]: https://github.com/evennia/evennia/issues/3560
+[issue3601]: https://github.com/evennia/evennia/issues/3601
+[issue3194]: https://github.com/evennia/evennia/issues/3194
+[issue2774]: https://github.com/evennia/evennia/issues/2774
+[issue3312]: https://github.com/evennia/evennia/issues/3312
+[issue3154]: https://github.com/evennia/evennia/issues/3154
+[issue3193]: https://github.com/evennia/evennia/issues/3193
+[issue3082]: https://github.com/evennia/evennia/issues/3082
+[issue3693]: https://github.com/evennia/evennia/issues/3693
 
 
 ## Evennia 5.0.1

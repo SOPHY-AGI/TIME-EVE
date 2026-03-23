@@ -23,7 +23,7 @@ inputs:
     required: false
     default: "false"
   needs-postgres-package:
-    description: "Whether to install psycopg2-binary package (true/false)."
+    description: "Whether to install psycopg package (true/false)."
     required: false
     default: "false"
   coveralls-token:
@@ -48,7 +48,7 @@ runs:
         python -m pip install --upgrade pip
         pip install wheel
         if [ "${{ inputs.needs-postgres-package }}" == "true" ]; then
-          pip install psycopg2-binary==2.9.5   # req by postgresql
+          pip install "psycopg[binary]>=3.1.0"   # req by postgresql
         fi
         if [ "${{ inputs.needs-mysql-package }}" == "true" ]; then
           pip install mysqlclient
@@ -102,7 +102,13 @@ runs:
       if: ${{ inputs.coverage-test != 'true' }}
       working-directory: testing_mygame
       run: |
-        evennia test --settings=settings --keepdb --timing evennia
+        if [ "${{ inputs.testing-db }}" = "postgresql" ]; then
+          # PostgreSQL runs in CI have historically been sensitive to reusing
+          # stale test DB state; run with explicit verbosity for easier diagnosis.
+          evennia test --settings=settings --timing --verbosity 2 evennia
+        else
+          evennia test --settings=settings --keepdb --timing evennia
+        fi
       shell: bash
 
     # OBS - it's important to not run the coverage tests with --parallel, it messes up the coverage

@@ -549,17 +549,19 @@ class CmdSet(object, metaclass=_CmdSetMeta):
             if not hasattr(cmd, "obj") or cmd.obj is None:
                 cmd.obj = self.cmdsetobj
 
-            # remove duplicates and add new
-            for _dum in range(commands.count(cmd)):
-                commands.remove(cmd)
+            if not allow_duplicates:
+                # remove duplicates and add new
+                for _dum in range(commands.count(cmd)):
+                    commands.remove(cmd)
             commands.append(cmd)
 
             # add system_command to separate list as well,
             # for quick look-up. These have no
             if cmd.key.startswith("__"):
-                # remove same-matches and add new
-                for _dum in range(system_commands.count(cmd)):
-                    system_commands.remove(cmd)
+                if not allow_duplicates:
+                    # remove same-matches and add new
+                    for _dum in range(system_commands.count(cmd)):
+                        system_commands.remove(cmd)
                 system_commands.append(cmd)
 
         if not allow_duplicates:
